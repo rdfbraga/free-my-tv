@@ -261,10 +261,11 @@ final class HomeApps {
 
     // MARK: - Top buttons (the round ones at the top right)
 
-    static final String TOP_LIVE = "live", TOP_INPUTS = "inputs", TOP_SETTINGS = "settings", TOP_RECENTS = "recents", TOP_STORE = "store";
-    static final List<String> TOP_DEFAULT = Collections.unmodifiableList(java.util.Arrays.asList(TOP_LIVE, TOP_INPUTS, TOP_SETTINGS));
-    /** What can be a top button: the default three, and Recent Apps and App Store for whoever adds them. */
-    static final List<String> TOP_ALL = Collections.unmodifiableList(java.util.Arrays.asList(TOP_LIVE, TOP_INPUTS, TOP_SETTINGS, TOP_RECENTS, TOP_STORE));
+    static final String TOP_LIVE = "live", TOP_INPUTS = "inputs", TOP_SETTINGS = "settings", TOP_RECENTS = "recents", TOP_STORE = "store",
+            TOP_ALL_APPS = "all-apps", TOP_TV_SETTINGS = "tv-settings";
+    static final List<String> TOP_DEFAULT = Collections.unmodifiableList(java.util.Arrays.asList(TOP_LIVE, TOP_INPUTS, TOP_SETTINGS, TOP_ALL_APPS, TOP_TV_SETTINGS));
+    /** What can be a top button: the default five, plus Recent Apps and App Store for whoever adds them. */
+    static final List<String> TOP_ALL = Collections.unmodifiableList(java.util.Arrays.asList(TOP_LIVE, TOP_INPUTS, TOP_SETTINGS, TOP_ALL_APPS, TOP_TV_SETTINGS, TOP_RECENTS, TOP_STORE));
     static final int MAX_TOP = TOP_ALL.size();
 
     /** The keys of the top buttons, in order (Settings > Top Buttons; by default Live TV, HDMI Inputs, Settings). */
@@ -276,6 +277,8 @@ final class HomeApps {
             if (key.equals(TOP_RECENTS) && Prefs.recents().equals("off")) continue;   // Recent Apps is off: no button either
             if (TOP_ALL.contains(key) && !keys.contains(key)) keys.add(key);
         }
+        // Ajustes do Início (a engrenagem) fica sempre ligado, mesmo se tentarem removê-lo.
+        if (!keys.contains(TOP_SETTINGS)) keys.add(Math.min(2, keys.size()), TOP_SETTINGS);
         return keys;
     }
 
@@ -320,6 +323,8 @@ final class HomeApps {
         switch (key) {
             case TOP_LIVE: return action(LIVE_TV, TOP_LIVE, Ui.tr("light|Live TV"), "live_tv");
             case TOP_INPUTS: return action(INPUTS, TOP_INPUTS, Ui.tr("HDMI Inputs"), "hdmi");
+            case TOP_ALL_APPS: return action(ALL_APPS, TOP_ALL_APPS, Ui.tr("light|All Apps"), "apps");
+            case TOP_TV_SETTINGS: return action(ANDROID_SETTINGS, TOP_TV_SETTINGS, Ui.tr("light|TV Settings"), "tv_settings");
             case TOP_RECENTS: return action(RECENTS, TOP_RECENTS, Ui.tr("Recent Apps"), "recents");
             case TOP_STORE: return action(APP, TOP_STORE, Ui.tr("App Store"), "store");
             default: return action(SETTINGS, TOP_SETTINGS, Ui.tr("light|Settings"), "settings");

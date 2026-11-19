@@ -102,6 +102,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private static final float CAPSULE_TOP = 46, CAPSULE_H = 68, BUTTON = 56;
     // Bottom drawer (measured with it open; everything moves up by SHIFT).
     private static final float SHIFT = 560, ROW_TITLE_1 = 730, ROW_TOP_1 = 746, ROW_TITLE_2 = 884, ROW_TOP_2 = 900, ROW_H = 104;
+    private static final float SHELF_DROP = 380;   // prateleira de ícones do Início deslocada para a base da tela
     private static final float CARDS_TOP = 690, CARDS_H = 330;   // the weather and quotes cards, bottom right
     // "All Apps" sheet.
     private static final int COLUMNS = 5, VISIBLE_ROWS = 3;
@@ -122,7 +123,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private static final float L_STATUS = 25, L_STATUS_GAP = 22;
     private static final String[] STATUS_SYMBOLS = {"wifi", "ethernet", "bluetooth", "usb"};
     private static final float L_PLATTER_TOP = 430, L_TILE_H = 126;
-    private static final float L_DATE_BASE = 150, L_CLOCK_BASE = 320, L_WEATHER_BASE = 626, L_QUOTES_BASE = 694;
+    private static final float L_DATE_BASE = 485, L_CLOCK_BASE = 655, L_WEATHER_BASE = 626, L_QUOTES_BASE = 694;
     private static final int L_INK = 0xFF1D1D1F, L_DIM = 0xFF6E6E73, L_FAINT = 0xFF8E8E93;
     private static String[] tabs;
     private static int tabsGeneration = -1;
@@ -190,7 +191,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     // Settings > Top of the screen: the picks (above), what you were watching in your apps (a row of 16:9 cards that
     // scrolls, Z_WATCH) or nothing. Its texts are measured once per list and its pictures decoded once (WatchArt), so
     // drawing the row costs no more than the picks.
-    private String topMode = Prefs.TOP_PICKS;
+    private String topMode = Prefs.TOP_NONE;
     private List<WatchNext.Item> watching = new ArrayList<>();
     private final Spring[] watchFocus = new Spring[WatchNext.MAX];
     private final Spring watchScroll = new Spring(0.32f, 1f, 0);
@@ -870,9 +871,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         sky.layout(0, 0, width, height);
         place(heroLayer, 0, 0);
         place(status, statusWide ? 0 : width - status.getMeasuredWidth(), 0);
-        place(platter, 0, Math.round(370 * kk));   // the shelf's glass, under the clock (L_PLATTER_TOP)
-        place(tiles, 0, Math.round(400 * kk));
-        place(drawerLayer, 0, Math.round(470 * kk));
+        place(platter, 0, Math.round(SHELF_DROP * kk));   // prateleira de ícones do Início na base da tela
+        place(tiles, 0, Math.round((SHELF_DROP + 30) * kk));
+        place(drawerLayer, 0, 0);   // cobre a tela toda, para o clima no topo não ser recortado
         sheetLayer.layout(0, 0, width, height);
         menuLayer.layout(0, 0, width, height);
         sheetLayer.setPivotX(width / 2f);
@@ -931,8 +932,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         lQuote = Ui.numbers(Ui.regular, 21 * k, L_FAINT);
         lTip = Ui.text(Ui.semibold, 25 * k, L_INK);
         lTip.setTextAlign(Paint.Align.CENTER);
-        lDate = Ui.text(Ui.semibold, 34 * k, L_DIM);
-        lClock = Ui.numbers(Ui.light, 150 * k, L_INK);
+        lDate = Ui.text(Ui.semibold, 42 * k, L_DIM);
+        lClock = Ui.numbers(Ui.light, 190 * k, L_INK);
         lClock.setLetterSpacing(-0.01f);
         lWeather = Ui.text(Ui.medium, 34 * k, L_DIM);
         lClockQuote = Ui.numbers(Ui.medium, 28 * k, L_DIM);
@@ -1109,8 +1110,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         float lift = 0;
         show(heroLayer, top, lift);
         show(status, top, lift);
-        show(platter, home, lift);
-        show(tiles, home, lift);
+        show(platter, home, lift + SHELF_DROP * k);
+        show(tiles, home, lift + SHELF_DROP * k);
         float da = home * smoothstep(0.1f, 0.6f, dc);
         drawerLayer.setTranslationY((1 - d) * shift);
         drawerLayer.setAlpha(da);
@@ -2033,8 +2034,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     // MARK: - Bottom drawer
 
     private static List<HomeApps.Item> drawerList(Context c) {
-        List<HomeApps.Item> list = HomeApps.orderedInputs(c);
-        list.addAll(HomeApps.drawerShortcuts(c));
+        List<HomeApps.Item> list = new ArrayList<>();
         list.addAll(HomeAssistant.items(c));   // empty unless configured and on in Home Settings
         return list;
     }
@@ -2069,7 +2069,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         int n = drawerItems.size();
         float left = MARGIN * k, right = CONTENT_R * k;
         // The left column: the inputs on the top row, the shortcuts (and Home Assistant) on the row below.
-        float tilesRight = 640 * k;
+        float tilesRight = 700 * k;
         float gap = 18 * k;
         int perRow = Math.max(1, Math.max(drawerInputs, n - drawerInputs));
         float tw = Math.min(ROW_H * k, (tilesRight - left - (perRow - 1) * gap) / perRow);   // square tiles
@@ -2083,12 +2083,9 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             snap(drawerRects[i]);
             x += tw + gap;
         }
-        float cardsTop = CARDS_TOP * k;
-        // The weather card sits in the middle; the quotes take what is left on the right.
-        weatherCard.set(660 * k, cardsTop, 1300 * k, cardsTop + CARDS_H * k);
-        quotesCard.set(1320 * k, cardsTop, right, cardsTop + CARDS_H * k);
+        // Weather card now sits at the top, next to the clock, above the shelf.
+        weatherCard.set(700 * k, 375 * k, 1340 * k, 705 * k);
         snap(weatherCard);
-        snap(quotesCard);
         // The symbols at their sizes at rest and focused: drawing them never scales one.
         for (HomeApps.Item it : drawerItems) {
             Symbols.warm(getContext(), it.symbol, 34 * k);
@@ -2181,7 +2178,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private void drawDrawer(Canvas c) {
-        if (drawerItems.isEmpty()) return;
         rowTitle.setColor(tone(L_DIM, 0xB3FFFFFF));
         cardTitle.setColor(tone(L_DIM, 0xB3FFFFFF));
         cardText.setColor(drawerInk(0.95f));
@@ -2192,15 +2188,12 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         hourTemp.setColor(drawerInk(0.95f));
         dayLow.setColor(tone(L_DIM, 0xADFFFFFF));
         pricePaint.setColor(drawerInk(0.95f));
-        if (drawerInputs > 0) c.drawText(Ui.tr("Inputs"), drawerRects[0].left + 4 * k, ROW_TITLE_1 * k, rowTitle);
-        if (drawerInputs < drawerHome) c.drawText(Ui.tr("Shortcuts"), drawerRects[drawerInputs].left + 4 * k, ROW_TITLE_2 * k, rowTitle);
         if (drawerHome < drawerItems.size()) c.drawText("Home Assistant", drawerRects[drawerHome].left + 4 * k, ROW_TITLE_2 * k, rowTitle);
         int top = -1;
         for (int i = 0; i < drawerItems.size(); i++) if (drawerFocus[i].value > 0.02f && (top < 0 || drawerFocus[i].value > drawerFocus[top].value)) top = i;
         for (int i = 0; i < drawerItems.size(); i++) if (i != top) drawDrawerTile(c, i);
         if (top >= 0) drawDrawerTile(c, top);
         if (Prefs.weather()) drawWeatherCard(c, weatherCard);
-        if (Prefs.quotes() && HomeData.active().length > 0) drawQuotesCard(c, quotesCard);
     }
 
     /** Square drawer button: symbol and name; an input with no device is dimmed. Focused: white, with dark text. */
@@ -2514,14 +2507,13 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private boolean inputsOnResume;
 
     private void openInputs() {
-        openDrawer();
-        for (int i = 0; i < drawerItems.size(); i++) {
-            if (drawerItems.get(i).kind == HomeApps.INPUT) {
-                drawerIndex = i;
-                break;
-            }
+        // As entradas saíram da gaveta; abre o seletor de entradas da própria TV.
+        try {
+            Intent i = new Intent("com.android.tv.action.VIEW_INPUTS").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+        } catch (ActivityNotFoundException | SecurityException e) {
+            showToast(Ui.tr("No inputs."));
         }
-        retarget(false);
     }
 
     private void openSheet() {
@@ -4050,14 +4042,8 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private void layoutLight() {
         if (lTab == null) return;
         // Text tabs; the focus pill extends 26 px past the text (the first tab's text starts at the margin).
-        float pad = 26 * k, tabTop = L_TABBAR_TOP * k, tabBottom = (L_TABBAR_TOP + L_TABBAR_H) * k;
-        float x = MARGIN * k - pad;
-        for (int i = 0; i < 3; i++) {
-            float tw = Math.max(lTabOn.measureText(tabs()[i]), lTab.measureText(tabs()[i]));
-            topRects[i].set(x, tabTop, x + tw + 2 * pad, tabBottom);
-            snap(topRects[i]);
-            x = topRects[i].right + 4 * k;
-        }
+        // No tabs on this build: picks are off the home screen.
+        for (int i = 0; i < 3; i++) topRects[i].setEmpty();
         float b = L_BUTTON * k, right = CONTENT_R * k, cy = L_BUTTON_CY * k;
         for (int i = lightButtons.size() - 1; i >= 0; i--) {
             topRects[3 + i].set(right - b, cy - b / 2, right, cy + b / 2);
@@ -4144,7 +4130,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     }
 
     private boolean continueMode() {
-        return topMode.equals(Prefs.TOP_CONTINUE);
+        return false;   // continue watching removed from this build
     }
 
     /** What the top shows now (from reload, off the main thread) and, for Continue Watching, its list. */
@@ -4697,7 +4683,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         titleRight = MARGIN * k + lTitle.measureText(hello);
         if (!picksMode()) {
             if (continueMode()) drawWatchRow(c);
-            if (HomeData.coinCount() > 0 || playingTab != null) drawQuotes(c);
             return;
         }
         // Text tabs (the selected one in bold, in the main text color); with focus on the tabs, the selected one gets
@@ -4730,7 +4715,6 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         for (int i = 0; i < slots; i++) if (cardFocus[i].value > 0.02f && (top < 0 || cardFocus[i].value > cardFocus[top].value)) top = i;
         for (int i = 0; i < slots; i++) if (i != top) drawLightCard(c, i);
         if (top >= 0) drawLightCard(c, top);
-        if (HomeData.coinCount() > 0 || playingTab != null) drawQuotes(c);
     }
 
     private boolean picksOn() {

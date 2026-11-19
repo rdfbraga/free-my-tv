@@ -139,6 +139,7 @@ final class Prefs {
     static void init(Context c) {
         app = c.getApplicationContext();
         migrateKeys();   // before anything reads the button choices
+        migrateTopButtons();   // the minimalista build adds All Apps and TV Settings to the top row once
         Ui.applyLanguage();   // the language picked on the TV, now that it can be read
     }
 
@@ -320,8 +321,8 @@ final class Prefs {
 
     /** What the cards under the title show: the recommendations (TMDB), what you were watching in your apps, or nothing. */
     static String topContent() {
-        String v = sp().getString("topContent", TOP_PICKS);
-        return v.equals(TOP_CONTINUE) || v.equals(TOP_NONE) ? v : TOP_PICKS;
+        String v = sp().getString("topContent", TOP_NONE);
+        return v.equals(TOP_CONTINUE) || v.equals(TOP_NONE) ? v : TOP_NONE;
     }
 
     static void setTopContent(String v) { put("topContent", v); }
@@ -379,7 +380,7 @@ final class Prefs {
     static boolean homeAssistant() { return sp().getBoolean("homeAssistant", false); }
     static void setHomeAssistant(boolean on) { put("homeAssistant", on); }
 
-    static boolean quotes() { return sp().getBoolean("quotes", Config.SHOW_CRYPTO); }
+    static boolean quotes() { return sp().getBoolean("quotes", false); }
     static void setQuotes(boolean on) { put("quotes", on); }
 
     /** Your photos (Photos, sent from a computer) on the screensaver and behind the home screen, once imported. */
@@ -489,8 +490,11 @@ final class Prefs {
     }
 
     static void setTopButtons(List<String> keys) {
+        List<String> out = new ArrayList<>(keys);
+        // Ajustes do Início (a engrenagem) fica sempre ligado.
+        if (!out.contains(HomeApps.TOP_SETTINGS)) out.add(Math.min(2, out.size()), HomeApps.TOP_SETTINGS);
         StringBuilder sb = new StringBuilder();
-        for (String p : keys) sb.append(sb.length() == 0 ? "" : ",").append(p);
+        for (String p : out) sb.append(sb.length() == 0 ? "" : ",").append(p);
         put("topButtons", sb.toString());
     }
 
@@ -650,6 +654,19 @@ final class Prefs {
         StringBuilder sb = new StringBuilder();
         for (int key : KEYS) sb.append(key).append('=').append(old.getString("key" + key, defaultApp(key))).append('\n');
         writeKeys(sb.toString());
+    }
+
+    /** The minimalista build adds All Apps and TV Settings to the top row once, even if it was edited before. */
+    private static void migrateTopButtons() {
+        SharedPreferences sp = sp();
+        if (sp.getBoolean("topButtonsV2", false)) return;
+        List<String> keys = topButtons();
+        if (keys != null) {
+            for (String key : new String[] {HomeApps.TOP_ALL_APPS, HomeApps.TOP_TV_SETTINGS})
+                if (!keys.contains(key)) keys.add(key);
+            setTopButtons(keys);
+        }
+        sp.edit().putBoolean("topButtonsV2", true).apply();
     }
 
     /** Package the key opens ("" = nothing). */

@@ -495,6 +495,15 @@ final class HomeMode {
         ModeJob.schedule(c, ModeJob.PLAYING, null, 0);
     }
 
+    /** Sets the TV's screen-off timeout (which decides when the screensaver starts). Runs over the app's own ADB. */
+    static void setScreenOffTimeout(Context c, int ms) {
+        try (Adb adb = Adb.connect(c, 10_000, null)) {
+            adb.shell("settings put system screen_off_timeout " + ms);
+        } catch (IOException e) {
+            AppLog.w("screen off timeout: " + e.getMessage());
+        }
+    }
+
     static void nowPlayingAccessNow(Context app) {
         synchronized (RUN) {   // after a switch or a revert, never in the middle of one
             JSONObject s = state(app);
